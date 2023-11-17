@@ -32,14 +32,14 @@ def contructTsharkCommand(filename,tsharkOptions,nomePcap):
     return (command,outfilename)
 
 
-TSHARK_OPT = ["-t e",
+TSHARK_OPT = ["-t ad",
             "-T fields",
             "-E separator=,",
-            "-e frame.time -e ip.src -e ip.dst -e ip.proto -e tcp.len -e udp.length -e eth.src -e eth.dst",
+            "-e _ws.col.Time -e ip.src -e ip.dst -e ip.proto -e tcp.len -e udp.length -e eth.src -e eth.dst",
             "-e tcp.srcport -e tcp.dstport -e udp.srcport -e udp.dstport",
             ]
 
-PACKET_COLUMNS =  ['date', 'time', 'ip_src', 'ip_dst', 'proto','len_tcp','len_udp', 'mac_src', 'mac_dst',
+PACKET_COLUMNS =  ['timestamp', 'ip_src', 'ip_dst', 'proto','len_tcp','len_udp', 'mac_src', 'mac_dst',
  'tcp_srcport', 'tcp_dstport', 'udp_srcport', 'udp_dstport']
 
 # execute a shell command as a child process
@@ -109,4 +109,4 @@ for filename in tqdm(inputfile.glob("*.csv"), unit = "CSVs"): ## percorre o veto
     merge.append(df)
 
 df_total = pd.concat(merge, axis = 0, ignore_index=True) ## concatena todos csv num dataframe apenas
-df_total.to_csv('df_total.csv')
+df_total.to_csv('df_total.csv', index=False)
