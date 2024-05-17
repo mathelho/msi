@@ -139,3 +139,24 @@ p_pred = p_model.predict(X_test)
 
 accuracy = accuracy_score(y_test, p_pred)
 print('Acurácia: ', accuracy)
+
+"""Testando redes neurais..."""
+
+import keras
+from keras.models import Sequential
+from keras.layers import Dense
+
+model = Sequential()
+# primeira camada, utilizando a função de ativação ReLU e 4 colunas (mesmo número de colunas do nosso dataframe X)
+model.add(Dense(100, activation='relu', input_shape=(4,)))
+# segunda camada, usando 22 pois o maior número na coluna Y (das labels) é 21. softmax é uma função de ativação para classificação multi-classe
+model.add(Dense(22, activation='softmax'))
+
+# compilando o modelo. primeiramente tentei usar categorical_crossentropy como a função de perda, mas apresentou erro. funcionou com a sparse
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+model.fit(X_train, y_train, batch_size=128, epochs=10, validation_split=0.1)
+
+perda, acuracia = model.evaluate(X_test, y_test)
+
+print(f"Perda no teste: {perda}, Acurácia no teste: {acuracia}")
