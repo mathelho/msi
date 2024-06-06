@@ -178,3 +178,42 @@ model_2.fit(X_train, y_train, batch_size=128, epochs=10, validation_split=0.1)
 perda, acuracia = model_2.evaluate(X_test, y_test)
 
 print(f"Perda no teste: {perda}, Acurácia no teste: {acuracia}")
+
+"""Mesmas camadas mas com outros parâmetros?"""
+
+model_2 = Sequential()
+model_2.add(Dropout(0.2, input_shape=(4,)))
+model_2.add(Dense(100, activation='relu'))
+
+model_2.add(Dense(22,))
+model_2.add(BatchNormalization())
+model_2.add(Activation('softmax'))
+
+model_2.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+model_2.fit(X_train, y_train, batch_size=50, epochs=15, validation_split=0.1)
+
+perda, acuracia = model_2.evaluate(X_test, y_test)
+
+print(f"Perda no teste: {perda}, Acurácia no teste: {acuracia}")
+
+"""Mais camadas, usando flatten... não melhorou"""
+
+model_2 = Sequential()
+model_2.add(Dropout(0.2, input_shape=(4,)))
+model_2.add(Dense(100, activation='relu'))
+model_2.add(Dense(64, activation='relu'))
+
+model_2.add(Flatten())
+model_2.add(Dense(200,))
+model_2.add(Dense(100,))
+model_2.add(BatchNormalization())
+model_2.add(Activation('softmax'))
+
+model_2.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+model_2.fit(X_train, y_train, batch_size=128, epochs=10, validation_split=0.1)
+
+perda, acuracia = model_2.evaluate(X_test, y_test)
+
+print(f"Perda no teste: {perda}, Acurácia no teste: {acuracia}")
