@@ -217,3 +217,33 @@ model_2.fit(X_train, y_train, batch_size=128, epochs=10, validation_split=0.1)
 perda, acuracia = model_2.evaluate(X_test, y_test)
 
 print(f"Perda no teste: {perda}, Acurácia no teste: {acuracia}")
+
+"""Iniciando com modelos adversariais, utilizando o método FGSM:"""
+
+def generate_adversary(model, image, label, eps=2 / 255.0):
+  image = tf.cast(image, tf.float32)
+
+  with tf.GradientTape() as tape:
+    tape.watch(image)
+
+    pred = model(image)
+    loss = MSE(label, pred)
+
+    gradient = tape.gradient(loss, image)
+    signedGrad = tf.sign(gradient)
+
+    adversary = (image + (signedGrad * eps)).numpy()
+
+    return adversary
+
+y_test.iloc[0]
+
+for i in np.random.choice(np.arange(0, len(X_test)), size=(10,)):
+  image = X_test.iloc[i]
+  label = y_test.iloc[i]
+
+  adversary = generate_adversary(model_2, image.values.reshape(1, 4), label, eps=0.1)
+
+  pred = model_2.predict(adversary)
+
+pred
