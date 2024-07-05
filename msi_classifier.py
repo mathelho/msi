@@ -12,9 +12,15 @@ Importando as bibliotecas principais:
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, accuracy_score, classification_report, precision_score, recall_score
+import keras
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, Activation, BatchNormalization, Conv1D, Flatten, Reshape
+from tensorflow.keras.losses import MSE
+import tensorflow as tf
 
 """Instalando o gdown para baixar arquivos do Google Drive (neste caso, vamos fazer o download do arquivo csv):"""
 
@@ -35,24 +41,88 @@ df.head()
 
 df.info()
 
+"""Removendo as colunas de endereço MAC, pois não são interessantes para o treinamento do modelo."""
+
+df = df.drop('mac_src', axis=1)
+df = df.drop('mac_dst', axis=1)
+df.head()
+
+"""Calculando medidas estatísticas para as colunas de "timestamp" e "len", de forma a termos mais características no dataset. Features como endereço MAC, IP e porta são consideradas invasivas, podendo ocasionar em invasão de privacidade. Timestamp e tamanho do pacote são features passivas e se encaixam melhor neste processo."""
+
+def statistical_features_by_day_perPacket(df_total):
+
+	"""
+	Manipulacao dos dados para extracao de medidas estatisticas no nivel de pacote
+	Organizacao de saidas para os plots dos graficos
+	Para cada grupo de device extrai um subgrupo
+	"""
+	#print(df_total.columns)
+	devicegroup = df_total.groupby(['device_src_name'])
+
+	all_devices_samples = []
+	for name, amostra in tqdm(devicegroup, unit = "device"): # tqdm = progress bar
+		if (len(amostra.index) > 2):
+
+			# use for plots
+			#SAMPLERANGE = len(amostra)
+			#amostras_tamanho_x = np.array_split(amostra, len(amostra)/SAMPLERANGE)
+			# use for ML algorithms
+			amostras_tamanho_x = np.array_split(amostra, len(amostra)/3)
+
+			for device in amostras_tamanho_x:
+				#print(device)
+
+				device = pd.DataFrame(device)
+
+				all_devices_samples.append(
+					pd.DataFrame(data={
+					# ['ip_src', 'ip_dst', 'proto', 'timestamp', 'mac_src', 'mac_dst', 'len', 'src_port', 'dst_port', 'device']
+
+					"device_name": [str(device["device_src_name"].values[0])],
+					#"n_packets":  [device['device_src_name'].count()],
+					"mean_n_bytes": [device['len'].mean()],
+					"stdev_n_bytes": [device['len'].std(ddof=0)],
+					#"min_n_bytes": [device['len'].min()],
+					#"max_n_bytes": [device['len'].max()],
+					#"sum_n_bytes": [device['len'].sum()],
+					"median_n_bytes": [device['len'].median()],
+					"mean_timestamp": [device['timestamp'].mean()],
+					"stdev_timestamp": [device['timestamp'].std(ddof=0)],
+					#"sum_timestamp": [device['timestamp'].sum()],
+					"median_timestamp": [device['timestamp'].median()],
+					#"min_timestamp": [device['timestamp'].min()],
+					#"max_timestamp": [device['timestamp'].max()],
+          }))
+
+	all_devices_samples = pd.concat(all_devices_samples)
+
+	## salva o df aqui #####
+	#all_devices_samples.to_csv(PACKETPLOTSDIR + (file.split('/')[-1]), index=False)
+	#print('done writing statistical features to : ' + PACKETPLOTSDIR + (file.split('/')[-1]))
+
+	return all_devices_samples
+
+df = statistical_features_by_day_perPacket(df)
+df.head()
+
+df.to_csv('df_statistic.csv', index=False)
+
 """Transformando os valores da coluna device_src_name em inteiros:"""
 
 le = LabelEncoder()
 
-for i in df.columns:
-  le = LabelEncoder()
-  df[i] = le.fit_transform(df[i].values)
+df['device_name'] = le.fit_transform(df['device_name'].values)
 
 df
 
 """Separando a coluna que vamos classificar em um dataset isolado, contendo apenas esta coluna:"""
 
-df_x = df.drop('device_src_name', axis=1)
-df_y = df['device_src_name']
+df_x = df.drop('device_name', axis=1)
+df_y = df['device_name']
 
 df_y
 
-X_train, X_test, y_train, y_test = train_test_split(df_x, df_y, random_state=0, test_size=0.3)
+X_train, X_test, y_train, y_test = train_test_split(df_x, df_y, random_state=42, test_size=0.3)
 print('Número de casos de treino: ', X_train.shape[0])
 print('Número de casos de teste: ', X_test.shape[0])
 
@@ -93,14 +163,14 @@ print('Acurácia: ', accuracy)
 
 """Usando regressão logística (com parâmetros que permitem usar este modelo na versão multinomial/multiclasse:"""
 
-from sklearn.linear_model import LogisticRegression
-lr = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)
+#from sklearn.linear_model import LogisticRegression
+#lr = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)
 
-lr.fit(X_train, y_train)
-lr_pred = lr.predict(X_test)
+#lr.fit(X_train, y_train)
+#lr_pred = lr.predict(X_test)
 
-accuracy = accuracy_score(y_test, lr_pred)
-print('Acurácia: ', accuracy)
+#accuracy = accuracy_score(y_test, lr_pred)
+#print('Acurácia: ', accuracy)
 
 """Usando K-Neighbors:"""
 
@@ -142,13 +212,9 @@ print('Acurácia: ', accuracy)
 
 """Testando redes neurais..."""
 
-import keras
-from keras.models import Sequential
-from keras.layers import Dense
-
 model = Sequential()
 # primeira camada, utilizando a função de ativação ReLU e 4 colunas (mesmo número de colunas do nosso dataframe X)
-model.add(Dense(100, activation='relu', input_shape=(4,)))
+model.add(Dense(100, activation='relu', input_shape=(6,)))
 # segunda camada, usando 22 pois o maior número na coluna Y (das labels) é 21. softmax é uma função de ativação para classificação multi-classe
 model.add(Dense(22, activation='softmax'))
 
@@ -164,8 +230,8 @@ print(f"Perda no teste: {perda}, Acurácia no teste: {acuracia}")
 """Mais uma rede neural, testando outros tipos de camadas:"""
 
 model_2 = Sequential()
-model_2.add(Dropout(0.2, input_shape=(4,)))
-model_2.add(Dense(100, activation='relu'))
+model_2.add(Dropout(0.2, input_shape=(6,)))
+model_2.add(Dense(100, activation='relu', input_shape=(6,)))
 
 model_2.add(Dense(22,))
 model_2.add(BatchNormalization())
