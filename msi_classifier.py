@@ -30,7 +30,7 @@ import gdown
 
 """Download do arquivo:"""
 
-url = "https://drive.google.com/u/1/uc?id=1DEJpczRY0AtIDcVjCo8FZXIi3sarxgwv&export=download"
+url = "https://drive.google.com/u/1/uc?id=1F8jSkzJ4raeCzcqptyC1C51QdmmAEY4Q&export=download"
 output = 'df_total.csv'
 gdown.download(url, output, quiet=False)
 
@@ -43,9 +43,9 @@ df.info()
 
 """Removendo as colunas de endereço MAC, pois não são interessantes para o treinamento do modelo."""
 
-df = df.drop('mac_src', axis=1)
-df = df.drop('mac_dst', axis=1)
-df.head()
+#df = df.drop('mac_src', axis=1)
+#df = df.drop('mac_dst', axis=1)
+#df.head()
 
 """Calculando medidas estatísticas para as colunas de "timestamp" e "len", de forma a termos mais características no dataset. Features como endereço MAC, IP e porta são consideradas invasivas, podendo ocasionar em invasão de privacidade. Timestamp e tamanho do pacote são features passivas e se encaixam melhor neste processo."""
 
@@ -102,10 +102,10 @@ def statistical_features_by_day_perPacket(df_total):
 
 	return all_devices_samples
 
-df = statistical_features_by_day_perPacket(df)
-df.head()
+#df = statistical_features_by_day_perPacket(df)
+#df.head()
 
-df.to_csv('df_statistic.csv', index=False)
+#df.to_csv('df_statistic.csv', index=False)
 
 """Transformando os valores da coluna device_src_name em inteiros:"""
 
@@ -210,6 +210,9 @@ p_pred = p_model.predict(X_test)
 accuracy = accuracy_score(y_test, p_pred)
 print('Acurácia: ', accuracy)
 
+# linha abaixo corrige o erro 'TensorFlow is executing eagerly. Please disable eager execution.' e 'maximum recursion depth exceeded'
+tf.compat.v1.disable_eager_execution()
+
 """Testando redes neurais..."""
 
 model = Sequential()
@@ -313,3 +316,42 @@ for i in np.random.choice(np.arange(0, len(X_test)), size=(10,)):
   pred = model_2.predict(adversary)
 
 pred
+
+pip install adversarial-robustness-toolbox
+
+#pip install scikeras
+
+# https://embracethered.com/blog/posts/2020/husky-ai-adversarial-robustness-toolbox-testing/
+# https://github.com/Trusted-AI/adversarial-robustness-toolbox/issues/1977
+# https://stackoverflow.com/questions/53676883/dnnclassifier-dataframe-object-has-no-attribute-dtype
+from art.attacks.evasion import FastGradientMethod
+from art.estimators.classification import KerasClassifier
+
+art_classifier = KerasClassifier(model=model_2, use_logits=False)  ## modelo é o modelo treinado que faz o model.fit()
+
+attack = FastGradientMethod(estimator=art_classifier, eps=0.5) ## brincar com o eps
+x_test_fgsm = attack.generate(x=X_test.values)
+print(x_test_fgsm)
+
+x_test_fgsm.shape
+
+df_fgsm = pd.DataFrame(x_test_fgsm, columns=X_test.columns)
+df_fgsm
+
+X_test
+
+model_3 = Sequential()
+model_3.add(Dropout(0.2, input_shape=(6,)))
+model_3.add(Dense(100, activation='relu', input_shape=(6,)))
+
+model_3.add(Dense(22,))
+model_3.add(BatchNormalization())
+model_3.add(Activation('softmax'))
+
+model_3.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+model_3.fit(X_train, y_train, batch_size=128, epochs=10, validation_split=0.1)
+
+perda, acuracia = model_3.evaluate(df_fgsm, y_test)
+
+print(f"Perda no teste: {perda}, Acurácia no teste: {acuracia}")
