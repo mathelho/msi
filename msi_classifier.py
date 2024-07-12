@@ -250,40 +250,40 @@ print(f"Perda no teste: {perda}, Acurácia no teste: {acuracia}")
 
 """Mesmas camadas mas com outros parâmetros?"""
 
-model_2 = Sequential()
-model_2.add(Dropout(0.2, input_shape=(4,)))
-model_2.add(Dense(100, activation='relu'))
+model_3 = Sequential()
+model_3.add(Dropout(0.2, input_shape=(4,)))
+model_3.add(Dense(100, activation='relu'))
 
-model_2.add(Dense(22,))
-model_2.add(BatchNormalization())
-model_2.add(Activation('softmax'))
+model_3.add(Dense(22,))
+model_3.add(BatchNormalization())
+model_3.add(Activation('softmax'))
 
-model_2.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+model_3.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-model_2.fit(X_train, y_train, batch_size=50, epochs=15, validation_split=0.1)
+model_3.fit(X_train, y_train, batch_size=50, epochs=15, validation_split=0.1)
 
-perda, acuracia = model_2.evaluate(X_test, y_test)
+perda, acuracia = model_3.evaluate(X_test, y_test)
 
 print(f"Perda no teste: {perda}, Acurácia no teste: {acuracia}")
 
 """Mais camadas, usando flatten... não melhorou"""
 
-model_2 = Sequential()
-model_2.add(Dropout(0.2, input_shape=(4,)))
-model_2.add(Dense(100, activation='relu'))
-model_2.add(Dense(64, activation='relu'))
+model_4 = Sequential()
+model_4.add(Dropout(0.2, input_shape=(4,)))
+model_4.add(Dense(100, activation='relu'))
+model_4.add(Dense(64, activation='relu'))
 
-model_2.add(Flatten())
-model_2.add(Dense(200,))
-model_2.add(Dense(100,))
-model_2.add(BatchNormalization())
-model_2.add(Activation('softmax'))
+model_4.add(Flatten())
+model_4.add(Dense(200,))
+model_4.add(Dense(100,))
+model_4.add(BatchNormalization())
+model_4.add(Activation('softmax'))
 
-model_2.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+model_4.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-model_2.fit(X_train, y_train, batch_size=128, epochs=10, validation_split=0.1)
+model_4.fit(X_train, y_train, batch_size=128, epochs=10, validation_split=0.1)
 
-perda, acuracia = model_2.evaluate(X_test, y_test)
+perda, acuracia = model_4.evaluate(X_test, y_test)
 
 print(f"Perda no teste: {perda}, Acurácia no teste: {acuracia}")
 
@@ -329,7 +329,7 @@ from art.estimators.classification import KerasClassifier
 
 art_classifier = KerasClassifier(model=model_2, use_logits=False)  ## modelo é o modelo treinado que faz o model.fit()
 
-attack = FastGradientMethod(estimator=art_classifier, eps=0.5) ## brincar com o eps
+attack = FastGradientMethod(estimator=art_classifier, eps=0.8) ## brincar com o eps
 x_test_fgsm = attack.generate(x=X_test.values)
 print(x_test_fgsm)
 
@@ -340,18 +340,13 @@ df_fgsm
 
 X_test
 
-model_3 = Sequential()
-model_3.add(Dropout(0.2, input_shape=(6,)))
-model_3.add(Dense(100, activation='relu', input_shape=(6,)))
+pred_fgsm = model_2.predict(df_fgsm)
 
-model_3.add(Dense(22,))
-model_3.add(BatchNormalization())
-model_3.add(Activation('softmax'))
+print(pred_fgsm)
 
-model_3.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+#df_test = pd.DataFrame(pred_fgsm)
+#print(df_test[0].value_counts())
 
-model_3.fit(X_train, y_train, batch_size=128, epochs=10, validation_split=0.1)
-
-perda, acuracia = model_3.evaluate(df_fgsm, y_test)
-
-print(f"Perda no teste: {perda}, Acurácia no teste: {acuracia}")
+# https://stackoverflow.com/questions/71874695/valueerror-classification-metrics-cant-handle-a-mix-of-multiclass-and-continuo
+acuracia_fgsm = accuracy_score(y_test, pred_fgsm)
+print('Acuracia: ', acuracia_fgsm)
