@@ -251,7 +251,7 @@ print(f"Perda no teste: {perda}, Acurácia no teste: {acuracia}")
 """Mesmas camadas mas com outros parâmetros?"""
 
 model_3 = Sequential()
-model_3.add(Dropout(0.2, input_shape=(4,)))
+model_3.add(Dropout(0.2, input_shape=(6,)))
 model_3.add(Dense(100, activation='relu'))
 
 model_3.add(Dense(22,))
@@ -340,12 +340,12 @@ df_fgsm
 
 X_test
 
-pred_fgsm = model_2.predict(df_fgsm)
+pred_fgsm = np.argmax(model_2.predict(df_fgsm), axis=1)
 
 print(pred_fgsm)
 
-#df_test = pd.DataFrame(pred_fgsm)
-#print(df_test[0].value_counts())
+df_test = pd.DataFrame(pred_fgsm)
+print(df_test[0].value_counts())
 
 # https://stackoverflow.com/questions/71874695/valueerror-classification-metrics-cant-handle-a-mix-of-multiclass-and-continuo
 acuracia_fgsm = accuracy_score(y_test, pred_fgsm)
