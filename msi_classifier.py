@@ -19,6 +19,7 @@ from sklearn.metrics import confusion_matrix, accuracy_score, classification_rep
 import keras
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, BatchNormalization, Conv1D, Flatten, Reshape
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras.losses import MSE
 import tensorflow as tf
 
@@ -216,7 +217,7 @@ tf.compat.v1.disable_eager_execution()
 """Testando redes neurais..."""
 
 model = Sequential()
-# primeira camada, utilizando a função de ativação ReLU e 4 colunas (mesmo número de colunas do nosso dataframe X)
+# primeira camada, utilizando a função de ativação ReLU e 6 colunas (mesmo número de colunas do nosso dataframe X)
 model.add(Dense(100, activation='relu', input_shape=(6,)))
 # segunda camada, usando 22 pois o maior número na coluna Y (das labels) é 21. softmax é uma função de ativação para classificação multi-classe
 model.add(Dense(22, activation='softmax'))
@@ -233,11 +234,17 @@ print(f"Perda no teste: {perda}, Acurácia no teste: {acuracia}")
 """Mais uma rede neural, testando outros tipos de camadas:"""
 
 model_2 = Sequential()
+# camada de dropout é utilizada para reduzir overfitting
 model_2.add(Dropout(0.2, input_shape=(6,)))
+# camada densa possui uma matriz de pesos que é ajustada durante o processo de treinamento.
+# função de ativação relu
 model_2.add(Dense(100, activation='relu', input_shape=(6,)))
 
+# outra camada densa, com o valor mínimo de 22, pois temos 21 classificações diferentes de device_name
 model_2.add(Dense(22,))
+# batchnormalization normaliza as entradas, mantendo a média da saída perto de 0 e o desvio padrão perto de 1. traz mais estabilidade
 model_2.add(BatchNormalization())
+# softmax usado como a última função de ativação da rede neural
 model_2.add(Activation('softmax'))
 
 model_2.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
@@ -266,22 +273,19 @@ perda, acuracia = model_3.evaluate(X_test, y_test)
 
 print(f"Perda no teste: {perda}, Acurácia no teste: {acuracia}")
 
-"""Mais camadas, usando flatten... não melhorou"""
+"""Alterando os parâmetros novamente:"""
 
 model_4 = Sequential()
-model_4.add(Dropout(0.2, input_shape=(4,)))
-model_4.add(Dense(100, activation='relu'))
-model_4.add(Dense(64, activation='relu'))
+model_4.add(Dropout(0.5, input_shape=(6,)))
+model_4.add(Dense(100, activation='relu', input_shape=(6,)))
 
-model_4.add(Flatten())
-model_4.add(Dense(200,))
-model_4.add(Dense(100,))
+model_4.add(Dense(22,))
 model_4.add(BatchNormalization())
 model_4.add(Activation('softmax'))
 
 model_4.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-model_4.fit(X_train, y_train, batch_size=128, epochs=10, validation_split=0.1)
+model_4.fit(X_train, y_train, batch_size=32, epochs=10, validation_split=0.5)
 
 perda, acuracia = model_4.evaluate(X_test, y_test)
 
@@ -289,43 +293,16 @@ print(f"Perda no teste: {perda}, Acurácia no teste: {acuracia}")
 
 """Iniciando com modelos adversariais, utilizando o método FGSM:"""
 
-def generate_adversary(model, image, label, eps=2 / 255.0):
-  image = tf.cast(image, tf.float32)
-
-  with tf.GradientTape() as tape:
-    tape.watch(image)
-
-    pred = model(image)
-    loss = MSE(label, pred)
-
-    gradient = tape.gradient(loss, image)
-    signedGrad = tf.sign(gradient)
-
-    adversary = (image + (signedGrad * eps)).numpy()
-
-    return adversary
-
-y_test.iloc[0]
-
-for i in np.random.choice(np.arange(0, len(X_test)), size=(10,)):
-  image = X_test.iloc[i]
-  label = y_test.iloc[i]
-
-  adversary = generate_adversary(model_2, image.values.reshape(1, 4), label, eps=0.1)
-
-  pred = model_2.predict(adversary)
-
-pred
-
 pip install adversarial-robustness-toolbox
 
 #pip install scikeras
 
+from art.attacks.evasion import FastGradientMethod
+from art.estimators.classification import KerasClassifier
+
 # https://embracethered.com/blog/posts/2020/husky-ai-adversarial-robustness-toolbox-testing/
 # https://github.com/Trusted-AI/adversarial-robustness-toolbox/issues/1977
 # https://stackoverflow.com/questions/53676883/dnnclassifier-dataframe-object-has-no-attribute-dtype
-from art.attacks.evasion import FastGradientMethod
-from art.estimators.classification import KerasClassifier
 
 art_classifier = KerasClassifier(model=model_2, use_logits=False)  ## modelo é o modelo treinado que faz o model.fit()
 
@@ -350,3 +327,17 @@ print(df_test[0].value_counts())
 # https://stackoverflow.com/questions/71874695/valueerror-classification-metrics-cant-handle-a-mix-of-multiclass-and-continuo
 acuracia_fgsm = accuracy_score(y_test, pred_fgsm)
 print('Acuracia: ', acuracia_fgsm)
+
+"""Aplicando o FGSM no nosso modelo linear de árvore de decisão implementado anteriormente, para verificar o funcionamento do ataque adversarial. Podemos verificar que a acurácia reduziu de 97% para 73%:"""
+
+art_classifier_dt = KerasClassifier(model=model_2, use_logits=False)  ## modelo é o modelo treinado que faz o model.fit()
+
+attack = FastGradientMethod(estimator=art_classifier_dt, eps=0.8) ## brincar com o eps
+dt_x_test_fgsm = attack.generate(x=X_test.values)
+
+dt_df_fgsm = pd.DataFrame(dt_x_test_fgsm, columns=X_test.columns)
+
+pred_dt_fgsm = dt_model.predict(dt_df_fgsm)
+
+dt_acuracia_fgsm = accuracy_score(y_test, pred_dt_fgsm)
+print('Acuracia :', dt_acuracia_fgsm)
