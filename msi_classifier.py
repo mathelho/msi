@@ -162,7 +162,9 @@ rf_pred = rf.predict(X_test)
 accuracy = accuracy_score(y_test, rf_pred)
 print('Acurácia: ', accuracy)
 
-"""Usando regressão logística (com parâmetros que permitem usar este modelo na versão multinomial/multiclasse:"""
+"""Usando regressão logística (com parâmetros que permitem usar este modelo na versão multinomial/multiclasse):
+A regressão logística não funciona muito bem com esse tipo de dados...
+"""
 
 #from sklearn.linear_model import LogisticRegression
 #lr = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)
@@ -330,9 +332,9 @@ print('Acuracia: ', acuracia_fgsm)
 
 """Aplicando o FGSM no nosso modelo linear de árvore de decisão implementado anteriormente, para verificar o funcionamento do ataque adversarial. Podemos verificar que a acurácia reduziu de 97% para 73%:"""
 
-art_classifier_dt = KerasClassifier(model=model_2, use_logits=False)  ## modelo é o modelo treinado que faz o model.fit()
+#art_classifier_dt = KerasClassifier(model=model_2, use_logits=False)  ## modelo é o modelo treinado que faz o model.fit()
 
-attack = FastGradientMethod(estimator=art_classifier_dt, eps=0.8) ## brincar com o eps
+#attack = FastGradientMethod(estimator=art_classifier_dt, eps=0.8) ## brincar com o eps
 dt_x_test_fgsm = attack.generate(x=X_test.values)
 
 dt_df_fgsm = pd.DataFrame(dt_x_test_fgsm, columns=X_test.columns)
@@ -341,3 +343,21 @@ pred_dt_fgsm = dt_model.predict(dt_df_fgsm)
 
 dt_acuracia_fgsm = accuracy_score(y_test, pred_dt_fgsm)
 print('Acuracia :', dt_acuracia_fgsm)
+
+rf_x_test_fgsm = attack.generate(x=X_test.values)
+
+rf_df_fgsm = pd.DataFrame(rf_x_test_fgsm, columns=X_test.columns)
+
+pred_rf_fgsm = rf.predict(rf_df_fgsm)
+
+rf_acuracia_fgsm = accuracy_score(y_test, pred_rf_fgsm)
+print('Acuracia :', rf_acuracia_fgsm)
+
+kn_x_test_fgsm = attack.generate(x=X_test.values)
+
+kn_df_fgsm = pd.DataFrame(kn_x_test_fgsm, columns=X_test.columns)
+
+pred_kn_fgsm = kn.predict(kn_df_fgsm)
+
+kn_acuracia_fgsm = accuracy_score(y_test, pred_kn_fgsm)
+print('Acuracia :', kn_acuracia_fgsm)
