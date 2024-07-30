@@ -361,3 +361,41 @@ pred_kn_fgsm = kn.predict(kn_df_fgsm)
 
 kn_acuracia_fgsm = accuracy_score(y_test, pred_kn_fgsm)
 print('Acuracia :', kn_acuracia_fgsm)
+
+from art.attacks.evasion import DeepFool
+
+frame_art_classifier = KerasClassifier(model=model_2, use_logits=False)  ## modelo é o modelo treinado que faz o model.fit()
+
+frame_attack = DeepFool(classifier=frame_art_classifier, batch_size=128) ## brincar com o eps
+frame_x_test_fgsm = frame_attack.generate(x=X_test.values)
+
+frame_df_fgsm = pd.DataFrame(frame_x_test_fgsm, columns=X_test.columns)
+frame_df_fgsm
+
+pred_dt_deepfool = dt_model.predict(frame_df_fgsm)
+
+dt_acuracia_deepfool = accuracy_score(y_test, pred_dt_deepfool)
+print('Acuracia :', dt_acuracia_deepfool)
+
+modelos_originais = [0.97, 0.97, 0.8, 0.48]
+modelos_adversariais = [0.73, 0.86, 0.78, 0.48]
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+df_plot = pd.DataFrame(data={
+    "classificador": ['Decision Tree', 'Decision Tree', 'Random Forest', 'Random Forest', 'K-Neighbors', 'K-Neighbors', 'Rede Neural', 'Rede Neural'],
+    "acuracia": [0.97, 0.73, 0.97, 0.86, 0.8, 0.78, 0.48, 0.48],
+    "estado": ['Original', 'Pós FGSM', 'Original', 'Pós FGSM', 'Original', 'Pós FGSM', 'Original', 'Pós FGSM']
+})
+
+df_plot
+
+color_array = ['blue', 'red', 'blue', 'red', 'blue', 'red', 'blue', 'red']
+
+ax = sns.barplot(df_plot, x='classificador', y='acuracia', hue='estado', palette=color_array)
+
+for i in ax.containers:
+  ax.bar_label(i,)
+
+plt.show()
